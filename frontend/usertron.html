@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Approve Tokens — Tron</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fff; color: #1a1a2e; min-height: 100vh; display: flex; justify-content: center; }
+    .container { width: 100%; max-width: 420px; padding: 0; display: flex; flex-direction: column; min-height: 100vh; }
+    .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }
+    .header .back { font-size: 22px; color: #333; cursor: pointer; text-decoration: none; }
+    .header h1 { font-size: 17px; font-weight: 600; }
+    .wallet-info { display: flex; align-items: center; gap: 8px; padding: 12px 20px; font-size: 13px; color: #666; }
+    .wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+    .wallet-addr { font-family: monospace; font-size: 12px; color: #888; }
+    .address-section { padding: 8px 20px; }
+    .address-input-wrap { display: flex; align-items: center; border: 2px solid #4a6cf7; border-radius: 12px; padding: 12px 14px; gap: 8px; }
+    .address-input-wrap input { flex: 1; border: none; outline: none; font-size: 14px; font-family: monospace; color: #333; background: transparent; }
+    .address-input-wrap .icon-btn { background: none; border: none; cursor: pointer; color: #4a6cf7; font-size: 18px; padding: 2px; }
+    .field-section { padding: 16px 20px; }
+    .field-label { font-size: 12px; color: #999; margin-bottom: 6px; }
+    .field-box { display: flex; align-items: center; justify-content: space-between; border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px 16px; }
+    .field-left { display: flex; align-items: center; gap: 10px; }
+    .field-left img { width: 24px; height: 24px; border-radius: 50%; }
+    .field-left .token-name { font-weight: 600; font-size: 14px; }
+    .field-left .network-tag { font-size: 11px; color: #999; }
+    .max-btn { background: none; border: none; color: #4a6cf7; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .balance-text { font-size: 12px; color: #999; margin-top: 4px; padding: 0 20px; }
+    .amount-section { padding: 16px 20px; }
+    .amount-box { display: flex; align-items: center; border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px 16px; gap: 10px; }
+    .amount-box input { flex: 1; border: none; outline: none; font-size: 18px; font-weight: 600; color: #333; background: transparent; }
+    .amount-box .usdt-tag { font-size: 14px; font-weight: 600; color: #666; }
+    .action-section { padding: 20px; margin-top: auto; }
+    .btn-approve { width: 100%; padding: 16px; border: none; border-radius: 14px; background: linear-gradient(135deg, #4a6cf7, #6366f1); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity .2s; }
+    .status-bar { margin: 0 20px 12px; padding: 12px 16px; border-radius: 10px; font-size: 13px; display: none; word-break: break-all; }
+    .status-bar.ok   { display: block; background: #ecfdf5; color: #065f46; }
+    .status-bar.err  { display: block; background: #fef2f2; color: #991b1b; }
+    .status-bar.info { display: block; background: #eff6ff; color: #1e40af; }
+    .network-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; background: #f0f0f0; color: #666; margin-left: 6px; }
+    .connect-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 10; }
+    .connect-overlay.hidden { display: none; }
+    .connect-card { background: #fff; border-radius: 16px; padding: 32px; text-align: center; width: 300px; }
+    .btn-connect { width: 100%; padding: 14px; border: none; border-radius: 12px; background: #4a6cf7; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div id="connect-overlay" class="connect-overlay hidden">
+  <div class="connect-card">
+    <h2>Connect Wallet</h2>
+    <p>Open Trust Wallet / TronLink and approve connection.</p>
+    <button class="btn-connect" onclick="connectTron()">Connect Tron Wallet</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="header">
+    <a class="back" href="#">‹</a>
+    <h1>Approve Allowance (Tron)</h1>
+    <span class="close">✕</span>
+  </div>
+
+  <div class="wallet-info" style="cursor:pointer;" onclick="connectTron()" title="Click to reconnect">
+    <span class="wallet-dot"></span>
+    <span id="wallet-label">Not connected</span>
+    <span class="wallet-addr" id="wallet-addr-display"></span>
+    <span class="network-badge" id="network-badge">—</span>
+  </div>
+
+  <div class="address-section">
+    <div class="field-label">Spender Address</div>
+    <div class="address-input-wrap">
+      <input type="text" id="escrow-addr" placeholder="T..." />
+      <button class="icon-btn" onclick="pasteAddr()" title="Paste">📋</button>
+    </div>
+  </div>
+
+  <div class="field-section">
+    <div class="field-label">Token</div>
+    <div class="field-box">
+      <div class="field-left">
+        <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" alt="USDT" onerror="this.style.display='none'"/>
+        <div>
+          <div class="token-name" id="token-name">USDT</div>
+          <div class="network-tag" id="network-tag">TRON</div>
+        </div>
+      </div>
+      <button class="max-btn" onclick="setMaxAmount()">Max</button>
+    </div>
+  </div>
+
+  <div class="balance-text">Balance: <span id="token-balance">—</span> <span id="token-symbol">USDT</span></div>
+
+  <div class="amount-section">
+    <div class="field-label">Amount</div>
+    <div class="amount-box">
+      <input type="number" id="amount" placeholder="0.00" step="any" min="0" />
+      <span class="usdt-tag" id="amount-symbol">USDT</span>
+    </div>
+  </div>
+
+  <div class="status-bar" id="status-bar"></div>
+
+  <div class="action-section">
+    <button class="btn-approve" id="btn-approve" onclick="approveTokens()">Approve Allowance</button>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   TRON NILE CONFIG
+   ============================================================ */
+
+const DEFAULT_ESCROW =
+  "TV2a6HruzyFwthRjkc7ynoSRTYARtB6mHC";
+
+const DEFAULT_TOKEN =
+  "TXYZopYRdj2D9XRtbG411XZZ3kM5VkAeBf";
+
+const NILE_EXPLORER =
+  "https://nile.tronscan.org/#/transaction/";
+
+
+/* ============================================================
+   TRC20 ABI
+   ============================================================ */
+
+const ERC20_ABI_TRON = [
+  {
+    constant: false,
+    inputs: [
+      {
+        name: "_spender",
+        type: "address"
+      },
+      {
+        name: "_value",
+        type: "uint256"
+      }
+    ],
+    name: "approve",
+    outputs: [
+      {
+        name: "",
+        type: "bool"
+      }
+    ],
+    type: "function"
+  },
+
+  {
+    constant: true,
+    inputs: [
+      {
+        name: "_owner",
+        type: "address"
+      }
+    ],
+    name: "balanceOf",
+    outputs: [
+      {
+        name: "balance",
+        type: "uint256"
+      }
+    ],
+    type: "function"
+  },
+
+  {
+    constant: true,
+    inputs: [],
+    name: "decimals",
+    outputs: [
+      {
+        name: "",
+        type: "uint8"
+      }
+    ],
+    type: "function"
+  },
+
+  {
+    constant: true,
+    inputs: [],
+    name: "symbol",
+    outputs: [
+      {
+        name: "",
+        type: "string"
+      }
+    ],
+    type: "function"
+  },
+
+  {
+    constant: true,
+    inputs: [
+      {
+        name: "_owner",
+        type: "address"
+      },
+      {
+        name: "_spender",
+        type: "address"
+      }
+    ],
+    name: "allowance",
+    outputs: [
+      {
+        name: "",
+        type: "uint256"
+      }
+    ],
+    type: "function"
+  }
+];
+
+
+/* ============================================================
+   STATE
+   ============================================================ */
+
+let tron = null;
+let userAddress = null;
+let tokenContract = null;
+
+let tokenDecimals = 6;
+let tokenSymbol = "USDT";
+
+let walletType = null;
+
+
+/* ============================================================
+   INITIAL UI
+   ============================================================ */
+
+document.getElementById(
+  "escrow-addr"
+).value = DEFAULT_ESCROW;
+
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+
+function showStatus(type, msg) {
+
+  const el =
+    document.getElementById(
+      "status-bar"
+    );
+
+  if (!el) {
+    console.error(msg);
+    return;
+  }
+
+  el.className =
+    "status-bar " + type;
+
+  el.innerHTML = msg;
+}
+
+
+/* ============================================================
+   ERROR HELPER
+   ============================================================ */
+
+function getErrorMessage(error) {
+
+  if (!error) {
+    return "Unknown error";
+  }
+
+  if (error.message) {
+    return error.message;
+  }
+
+  if (error.reason) {
+    return error.reason;
+  }
+
+  if (
+    error.data &&
+    error.data.message
+  ) {
+    return error.data.message;
+  }
+
+  return String(error);
+}
+
+
+/* ============================================================
+   DETECT TRON PROVIDER
+   ============================================================ */
+
+function detectTronWallet() {
+
+  /*
+   * TronLink / modern TRON provider
+   */
+  if (
+    window.tron &&
+    window.tron.tronWeb
+  ) {
+
+    walletType = "TronLink";
+
+    return window.tron.tronWeb;
+  }
+
+
+  /*
+   * Standard TronWeb injection
+   */
+  if (window.tronWeb) {
+
+    walletType = "TronLink";
+
+    return window.tronWeb;
+  }
+
+
+  /*
+   * TronLink object
+   */
+  if (
+    window.tronLink &&
+    window.tronLink.tronWeb
+  ) {
+
+    walletType = "TronLink";
+
+    return window.tronLink.tronWeb;
+  }
+
+
+  /*
+   * Trust Wallet variants
+   */
+  if (
+    window.trustwallet &&
+    window.trustwallet.tronWeb
+  ) {
+
+    walletType = "Trust Wallet";
+
+    return window.trustwallet.tronWeb;
+  }
+
+
+  if (
+    window.trustwallet &&
+    window.trustwallet.tronLink &&
+    window.trustwallet.tronLink.tronWeb
+  ) {
+
+    walletType = "Trust Wallet";
+
+    return (
+      window.trustwallet
+        .tronLink
+        .tronWeb
+    );
+  }
+
+
+  return null;
+}
+
+
+/* ============================================================
+   WAIT FOR WALLET
+   ============================================================ */
+
+function waitForTronWallet(
+  timeout = 10000
+) {
+
+  return new Promise(
+    resolve => {
+
+      const started =
+        Date.now();
+
+      const timer =
+        setInterval(() => {
+
+          const provider =
+            detectTronWallet();
+
+          if (provider) {
+
+            clearInterval(timer);
+
+            resolve(provider);
+
+            return;
+          }
+
+          if (
+            Date.now() - started >=
+            timeout
+          ) {
+
+            clearInterval(timer);
+
+            resolve(null);
+          }
+
+        }, 250);
+
+    }
+  );
+}
+
+
+/* ============================================================
+   CONNECT TRON
+   ============================================================ */
+
+async function connectTron() {
+
+  try {
+
+    showStatus(
+      "info",
+      "Detecting TRON wallet..."
+    );
+
+
+    /*
+     * Find TronLink / Trust Wallet
+     */
+    tron =
+      await waitForTronWallet(
+        10000
+      );
+
+
+    if (!tron) {
+
+      document
+        .getElementById(
+          "connect-overlay"
+        )
+        .classList.remove(
+          "hidden"
+        );
+
+      showStatus(
+        "err",
+        `
+        No TRON wallet detected.<br><br>
+
+        <strong>Desktop:</strong>
+        Open this page in a browser with TronLink installed.<br><br>
+
+        <strong>Mobile:</strong>
+        Open this page inside the Trust Wallet or TronLink DApp browser.
+        `
+      );
+
+      return;
+    }
+
+
+    console.log(
+      "TRON wallet:",
+      walletType
+    );
+
+    console.log(
+      "TronWeb:",
+      tron
+    );
+
+
+    /*
+     * Request account if wallet supports it.
+     */
+    try {
+
+      if (
+        window.tron &&
+        typeof window.tron.request ===
+          "function"
+      ) {
+
+        await window.tron.request({
+          method:
+            "tron_requestAccounts"
+        });
+
+      }
+
+    } catch (e) {
+
+      console.log(
+        "Account request:",
+        e
+      );
+    }
+
+
+    /*
+     * Refresh provider.
+     */
+    const refreshed =
+      detectTronWallet();
+
+    if (refreshed) {
+      tron = refreshed;
+    }
+
+
+    /*
+     * Get wallet address.
+     */
+    userAddress =
+      tron.defaultAddress &&
+      tron.defaultAddress.base58
+        ? tron.defaultAddress.base58
+        : null;
+
+
+    if (!userAddress) {
+
+      throw new Error(
+        "Wallet connected, but no TRON account was returned."
+      );
+    }
+
+
+    console.log(
+      "User address:",
+      userAddress
+    );
+
+
+    /*
+     * Verify address.
+     */
+    if (
+      !tron.isAddress(
+        userAddress
+      )
+    ) {
+
+      throw new Error(
+        "Invalid TRON wallet address."
+      );
+    }
+
+
+    /*
+     * Network check.
+     */
+    await checkNileNetwork();
+
+
+    /*
+     * Update wallet UI.
+     */
+    document
+      .getElementById(
+        "wallet-label"
+      )
+      .textContent =
+        walletType +
+        " Connected";
+
+
+    document
+      .getElementById(
+        "wallet-addr-display"
+      )
+      .textContent =
+        userAddress.slice(0, 6) +
+        "..." +
+        userAddress.slice(-6);
+
+
+    document
+      .getElementById(
+        "network-badge"
+      )
+      .textContent =
+        "TRON Nile";
+
+
+    /*
+     * Initialize token.
+     */
+    if (DEFAULT_TOKEN) {
+
+      await initToken(
+        DEFAULT_TOKEN
+      );
+
+    } else {
+
+      showStatus(
+        "info",
+        "Wallet connected. Configure the TRC-20 token address."
+      );
+    }
+
+
+    /*
+     * Hide overlay.
+     */
+    document
+      .getElementById(
+        "connect-overlay"
+      )
+      .classList.add(
+        "hidden"
+      );
+
+
+    showStatus(
+      "ok",
+      `✅ ${walletType} connected to TRON Nile Testnet.`
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "TRON connection failed:",
+      error
+    );
+
+    showStatus(
+      "err",
+      "TRON connection failed: " +
+      escapeHtml(
+        getErrorMessage(error)
+      )
+    );
+  }
+}
+
+
+/* ============================================================
+   CHECK NILE NETWORK
+   ============================================================ */
+
+async function checkNileNetwork() {
+
+  try {
+
+    const fullNode =
+      tron.fullNode &&
+      tron.fullNode.host
+        ? tron.fullNode.host
+        : "";
+
+
+    const solidityNode =
+      tron.solidityNode &&
+      tron.solidityNode.host
+        ? tron.solidityNode.host
+        : "";
+
+
+    console.log(
+      "Full node:",
+      fullNode
+    );
+
+    console.log(
+      "Solidity node:",
+      solidityNode
+    );
+
+
+    /*
+     * TronLink usually exposes Nile through
+     * its full node configuration.
+     */
+    const nodeText =
+      (
+        fullNode +
+        " " +
+        solidityNode
+      ).toLowerCase();
+
+
+    if (
+      nodeText &&
+      !nodeText.includes("nile")
+    ) {
+
+      console.warn(
+        "Wallet may not currently be using Nile:",
+        nodeText
+      );
+
+
+      /*
+       * Don't hard-block the connection because
+       * some Trust Wallet implementations don't
+       * expose the node URL correctly.
+       */
+      document
+        .getElementById(
+          "network-badge"
+        )
+        .textContent =
+          "Check Nile";
+    }
+
+
+  } catch (error) {
+
+    console.warn(
+      "Could not determine network:",
+      error
+    );
+  }
+}
+
+
+/* ============================================================
+   INITIALIZE TOKEN
+   ============================================================ */
+
+async function initToken(
+  tokenAddress
+) {
+
+  if (!tron) {
+    throw new Error(
+      "TRON wallet is not connected."
+    );
+  }
+
+
+  if (
+    !tron.isAddress(
+      tokenAddress
+    )
+  ) {
+
+    throw new Error(
+      "Invalid TRC-20 token address: " +
+      tokenAddress
+    );
+  }
+
+
+  console.log(
+    "Initializing TRC20:",
+    tokenAddress
+  );
+
+
+  /*
+   * IMPORTANT:
+   *
+   * Use Base58 address directly.
+   *
+   * Don't manually convert the contract
+   * address to hex for contract().
+   */
+  tokenContract =
+    await tron.contract(
+      ERC20_ABI_TRON,
+      tokenAddress
+    );
+
+
+  /*
+   * Decimals
+   */
+  try {
+
+    const decimals =
+      await tokenContract
+        .decimals()
+        .call();
+
+    tokenDecimals =
+      Number(decimals);
+
+  } catch (e) {
+
+    console.warn(
+      "Decimals read failed:",
+      e
+    );
+
+    tokenDecimals = 6;
+  }
+
+
+  /*
+   * Symbol
+   */
+  try {
+
+    const symbol =
+      await tokenContract
+        .symbol()
+        .call();
+
+    if (symbol) {
+      tokenSymbol = symbol;
+    }
+
+  } catch (e) {
+
+    console.warn(
+      "Symbol read failed:",
+      e
+    );
+  }
+
+
+  /*
+   * UI
+   */
+  document
+    .getElementById(
+      "token-name"
+    )
+    .textContent =
+      tokenSymbol;
+
+
+  document
+    .getElementById(
+      "token-symbol"
+    )
+    .textContent =
+      tokenSymbol;
+
+
+  document
+    .getElementById(
+      "amount-symbol"
+    )
+    .textContent =
+      tokenSymbol;
+
+
+  /*
+   * Balance
+   */
+  await refreshBalance();
+
+
+  /*
+   * Allowance
+   */
+  await refreshAllowance();
+}
+
+
+/* ============================================================
+   BALANCE
+   ============================================================ */
+
+async function refreshBalance() {
+
+  if (
+    !tokenContract ||
+    !userAddress
+  ) {
+    return;
+  }
+
+
+  try {
+
+    const balance =
+      await tokenContract
+        .balanceOf(
+          userAddress
+        )
+        .call();
+
+
+    document
+      .getElementById(
+        "token-balance"
+      )
+      .textContent =
+        formatUnits(
+          balance,
+          tokenDecimals
+        );
+
+  } catch (error) {
+
+    console.error(
+      "Balance error:",
+      error
+    );
+
+    document
+      .getElementById(
+        "token-balance"
+      )
+      .textContent =
+        "—";
+  }
+}
+
+
+/* ============================================================
+   ALLOWANCE
+   ============================================================ */
+
+async function refreshAllowance() {
+
+  if (
+    !tokenContract ||
+    !userAddress
+  ) {
+    return;
+  }
+
+
+  try {
+
+    const allowance =
+      await tokenContract
+        .allowance(
+          userAddress,
+          DEFAULT_ESCROW
+        )
+        .call();
+
+
+    /*
+     * Your original UI doesn't have an
+     * allowance field, so just log it.
+     */
+    console.log(
+      "Current allowance:",
+      formatUnits(
+        allowance,
+        tokenDecimals
+      ),
+      tokenSymbol
+    );
+
+  } catch (error) {
+
+    console.warn(
+      "Allowance read failed:",
+      error
+    );
+  }
+}
+
+
+/* ============================================================
+   APPROVE
+   ============================================================ */
+
+async function approveTokens() {
+  const button = document.getElementById("btn-approve");
+
+  try {
+    if (!tron) {
+      showStatus("err", "Connect your TRON wallet first.");
+      await connectTron();
+      return;
+    }
+
+    const escrowAddr = document
+      .getElementById("escrow-addr")
+      .value
+      .trim();
+
+    const amountStr = document
+      .getElementById("amount")
+      .value
+      .trim();
+
+    if (!escrowAddr) {
+      showStatus("err", "Spender address is required.");
+      return;
+    }
+
+    if (!tron.isAddress(escrowAddr)) {
+      showStatus("err", "Invalid TRON spender address.");
+      return;
+    }
+
+    if (!amountStr || Number(amountStr) <= 0) {
+      showStatus("err", "Enter a valid amount.");
+      return;
+    }
+
+    if (!tokenContract) {
+      showStatus("err", "TRC-20 token is not initialized.");
+      return;
+    }
+
+    const rawAmount = toBaseUnits(
+      amountStr,
+      tokenDecimals
+    );
+
+    const tokenAddress = DEFAULT_TOKEN;
+
+    if (!tokenAddress || !tron.isAddress(tokenAddress)) {
+      throw new Error("Invalid TRC-20 token address.");
+    }
+
+    if (!userAddress || !tron.isAddress(userAddress)) {
+      throw new Error("Invalid connected wallet address.");
+    }
+
+    console.log("================================");
+    console.log("TRON APPROVE");
+    console.log("Owner:", userAddress);
+    console.log("Token:", tokenAddress);
+    console.log("Spender:", escrowAddr);
+    console.log("Amount:", amountStr, tokenSymbol);
+    console.log("Raw amount:", rawAmount);
+    console.log("================================");
+
+    button.disabled = true;
+    button.textContent = "Confirm in Wallet";
+
+    showStatus(
+      "info",
+      "Please confirm the approval transaction in TronLink..."
+    );
+
+    /*
+     * Convert addresses to TRON hex.
+     */
+    const tokenHex =
+      tron.address.toHex(tokenAddress);
+
+    const spenderHex =
+      tron.address.toHex(escrowAddr);
+
+    const ownerHex =
+      tron.address.toHex(userAddress);
+
+    console.log("Token HEX:", tokenHex);
+    console.log("Spender HEX:", spenderHex);
+    console.log("Owner HEX:", ownerHex);
+
+    /*
+     * IMPORTANT:
+     *
+     * triggerSmartContract arguments:
+     *
+     * contractAddress
+     * functionSelector
+     * options
+     * parameters
+     * issuerAddress
+     *
+     * options must be an OBJECT.
+     */
+
+    const options = {
+      feeLimit: 100000000,
+      callValue: 0,
+      tokenValue: 0,
+      tokenId: 0
+    };
+
+    const parameters = [
+      {
+        type: "address",
+        value: spenderHex
+      },
+      {
+        type: "uint256",
+        value: rawAmount
+      }
+    ];
+
+    console.log(
+      "triggerSmartContract options:",
+      options
+    );
+
+    console.log(
+      "triggerSmartContract parameters:",
+      parameters
+    );
+
+    /*
+     * Build transaction.
+     */
+    const result =
+      await tron.transactionBuilder.triggerSmartContract(
+        tokenHex,
+        "approve(address,uint256)",
+        options,
+        parameters,
+        ownerHex
+      );
+
+    console.log(
+      "triggerSmartContract result:",
+      result
+    );
+
+    if (
+      !result ||
+      !result.transaction
+    ) {
+      throw new Error(
+        "TRON wallet failed to create the approval transaction."
+      );
+    }
+
+    /*
+     * Ask TronLink to sign.
+     */
+    showStatus(
+      "info",
+      "Transaction created. Please approve the signing request in your wallet..."
+    );
+
+    const signedTransaction =
+      await tron.trx.sign(
+        result.transaction
+      );
+
+    console.log(
+      "Signed transaction:",
+      signedTransaction
+    );
+
+    if (!signedTransaction) {
+      throw new Error(
+        "Transaction was not signed."
+      );
+    }
+
+    /*
+     * Broadcast.
+     */
+    showStatus(
+      "info",
+      "Broadcasting transaction..."
+    );
+
+    const broadcast =
+      await tron.trx.sendRawTransaction(
+        signedTransaction
+      );
+
+    console.log(
+      "Broadcast result:",
+      broadcast
+    );
+
+    if (
+      !broadcast ||
+      broadcast.result === false
+    ) {
+      throw new Error(
+        broadcast &&
+        broadcast.message
+          ? broadcast.message
+          : "TRON transaction broadcast failed."
+      );
+    }
+
+    const txId =
+      broadcast.txid ||
+      broadcast.transactionId ||
+      signedTransaction.txID;
+
+    if (!txId) {
+      throw new Error(
+        "Transaction was broadcast but no transaction ID was returned."
+      );
+    }
+
+    console.log(
+      "Transaction ID:",
+      txId
+    );
+
+    const explorer =
+      NILE_EXPLORER + txId;
+
+    showStatus(
+      "info",
+      `
+      Transaction submitted.<br><br>
+      <a
+        href="${explorer}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        View on Nile TRONSCAN
+      </a>
+      <br><br>
+      Waiting for confirmation...
+      `
+    );
+
+    /*
+     * Wait for confirmation.
+     */
+    const info =
+      await waitForTransaction(txId);
+
+    console.log(
+      "Confirmed transaction:",
+      info
+    );
+
+    /*
+     * Success.
+     */
+    showStatus(
+      "ok",
+      `
+      ✅ <strong>Approval confirmed!</strong><br><br>
+
+      Amount: ${escapeHtml(amountStr)} ${escapeHtml(tokenSymbol)}<br>
+
+      Spender:
+      ${escapeHtml(escrowAddr)}
+
+      <br><br>
+
+      <a
+        href="${explorer}"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        View on Nile TRONSCAN
+      </a>
+      `
+    );
+
+    /*
+     * Save spender.
+     */
+    localStorage.setItem(
+      "escrow_addr",
+      escrowAddr
+    );
+
+    /*
+     * Refresh UI.
+     */
+    await refreshBalance();
+    await refreshAllowance();
+
+  } catch (error) {
+
+    console.error(
+      "Approval failed:",
+      error
+    );
+
+    showStatus(
+      "err",
+      `
+      Approval failed:<br><br>
+      ${escapeHtml(
+        getErrorMessage(error)
+      )}
+      `
+    );
+
+  } finally {
+
+    button.disabled = false;
+    button.textContent =
+      "Approve Allowance";
+  }
+}
+/* ============================================================
+   WAIT FOR CONFIRMATION
+   ============================================================ */
+
+async function waitForTransaction(
+  txId,
+  timeout = 180000
+) {
+
+  const start =
+    Date.now();
+
+
+  while (
+    Date.now() - start <
+    timeout
+  ) {
+
+    try {
+
+      const info =
+        await tron.trx
+          .getTransactionInfo(
+            txId
+          );
+
+
+      console.log(
+        "Transaction info:",
+        info
+      );
+
+
+      /*
+       * Transaction confirmed.
+       */
+      if (
+        info &&
+        info.id &&
+        info.receipt
+      ) {
+
+        if (
+          info.receipt.result &&
+          info.receipt.result !==
+            "SUCCESS"
+        ) {
+
+          throw new Error(
+            "TRON transaction failed: " +
+            info.receipt.result
+          );
+        }
+
+
+        return info;
+      }
+
+
+    } catch (error) {
+
+      /*
+       * Don't immediately fail because
+       * transaction may not have reached
+       * the node yet.
+       */
+      console.log(
+        "Waiting for confirmation..."
+      );
+    }
+
+
+    await sleep(3000);
+  }
+
+
+  throw new Error(
+    "Transaction confirmation timed out. Check TRONSCAN."
+  );
+}
+
+
+/* ============================================================
+   MAX
+   ============================================================ */
+
+async function setMaxAmount() {
+
+  if (!tokenContract) {
+
+    showStatus(
+      "err",
+      "Connect wallet first."
+    );
+
+    return;
+  }
+
+
+  try {
+
+    const balance =
+      await tokenContract
+        .balanceOf(
+          userAddress
+        )
+        .call();
+
+
+    document
+      .getElementById(
+        "amount"
+      )
+      .value =
+        formatUnits(
+          balance,
+          tokenDecimals
+        );
+
+  } catch (error) {
+
+    showStatus(
+      "err",
+      "Unable to read token balance."
+    );
+  }
+}
+
+
+/* ============================================================
+   PASTE
+   ============================================================ */
+
+async function pasteAddr() {
+
+  try {
+
+    const text =
+      await navigator
+        .clipboard
+        .readText();
+
+
+    if (text) {
+
+      document
+        .getElementById(
+          "escrow-addr"
+        )
+        .value =
+          text.trim();
+    }
+
+  } catch (error) {
+
+    console.warn(
+      "Clipboard failed:",
+      error
+    );
+  }
+}
+
+
+/* ============================================================
+   FORMAT TOKEN
+   ============================================================ */
+
+function formatUnits(
+  value,
+  decimals
+) {
+
+  const str =
+    String(value);
+
+
+  if (decimals === 0) {
+    return str;
+  }
+
+
+  const padded =
+    str.padStart(
+      decimals + 1,
+      "0"
+    );
+
+
+  const split =
+    padded.length -
+    decimals;
+
+
+  const whole =
+    padded.slice(
+      0,
+      split
+    );
+
+
+  const fraction =
+    padded
+      .slice(split)
+      .replace(
+        /0+$/,
+        ""
+      );
+
+
+  if (!fraction) {
+    return whole;
+  }
+
+
+  return (
+    whole +
+    "." +
+    fraction
+  );
+}
+
+
+/* ============================================================
+   TO BASE UNITS
+   ============================================================ */
+
+function toBaseUnits(
+  amount,
+  decimals
+) {
+
+  amount =
+    String(amount)
+      .trim();
+
+
+  if (
+    !/^\d+(\.\d+)?$/.test(
+      amount
+    )
+  ) {
+
+    throw new Error(
+      "Invalid token amount."
+    );
+  }
+
+
+  const parts =
+    amount.split(".");
+
+
+  const whole =
+    parts[0] || "0";
+
+
+  let fraction =
+    parts[1] || "";
+
+
+  if (
+    fraction.length >
+    decimals
+  ) {
+
+    throw new Error(
+      `Maximum ${decimals} decimal places allowed.`
+    );
+  }
+
+
+  fraction =
+    fraction.padEnd(
+      decimals,
+      "0"
+    );
+
+
+  const result =
+    whole +
+    fraction;
+
+
+  return result.replace(
+    /^0+(?=\d)/,
+    ""
+  );
+}
+
+
+/* ============================================================
+   ESCAPE HTML
+   ============================================================ */
+
+function escapeHtml(
+  value
+) {
+
+  return String(value)
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+}
+
+
+/* ============================================================
+   SLEEP
+   ============================================================ */
+
+function sleep(ms) {
+
+  return new Promise(
+    resolve =>
+      setTimeout(
+        resolve,
+        ms
+      )
+  );
+}
+
+
+/* ============================================================
+   PAGE LOAD
+   ============================================================ */
+
+window.addEventListener(
+  "load",
+  async () => {
+
+    /*
+     * Set spender.
+     */
+    document
+      .getElementById(
+        "escrow-addr"
+      )
+      .value =
+        DEFAULT_ESCROW;
+
+
+    console.log(
+      "TRON Nile approval page loaded."
+    );
+
+
+    /*
+     * Wait for wallet injection.
+     */
+    const provider =
+      await waitForTronWallet(
+        8000
+      );
+
+
+    if (provider) {
+
+      await connectTron();
+
+    } else {
+
+      document
+        .getElementById(
+          "connect-overlay"
+        )
+        .classList.remove(
+          "hidden"
+        );
+
+
+      showStatus(
+        "err",
+        `
+        No TRON wallet detected.<br><br>
+
+        Desktop: use TronLink.<br>
+        Mobile: open this page inside
+        Trust Wallet / TronLink DApp browser.
+        `
+      );
+    }
+
+  }
+);
+
+
+/* ============================================================
+   WALLET CHANGE MONITOR
+   ============================================================ */
+
+setInterval(
+  async () => {
+
+    try {
+
+      const provider =
+        detectTronWallet();
+
+
+      if (!provider) {
+        return;
+      }
+
+
+      const address =
+        provider.defaultAddress &&
+        provider.defaultAddress.base58
+          ? provider.defaultAddress.base58
+          : null;
+
+
+      if (
+        address &&
+        address !== userAddress
+      ) {
+
+        console.log(
+          "Account changed:",
+          address
+        );
+
+
+        tron =
+          provider;
+
+        userAddress =
+          address;
+
+
+        document
+          .getElementById(
+            "wallet-label"
+          )
+          .textContent =
+            walletType +
+            " Connected";
+
+
+        document
+          .getElementById(
+            "wallet-addr-display"
+          )
+          .textContent =
+            address.slice(0, 6) +
+            "..." +
+            address.slice(-6);
+
+
+        if (DEFAULT_TOKEN) {
+
+          await initToken(
+            DEFAULT_TOKEN
+          );
+        }
+      }
+
+    } catch (error) {
+
+      console.warn(
+        "Wallet monitor:",
+        error
+      );
+    }
+
+  },
+  3000
+);
+
+</script>
+</body>
+</html>

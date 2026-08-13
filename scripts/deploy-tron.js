@@ -16,6 +16,10 @@
  *   TRON_TOKEN_ADDRESS    — TRC20 token address (optional; deploys mock if not set)
  */
 
+TRON_PRIVATE_KEY='1da28f16cd038328a153a84474cdabdf736bfe7ea75742a52da14ba2c556b94e' 
+TRON_FULL_NODE='https://api.trongrid.io'
+TRON_TOKEN_ADDRESS='TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t'
+
 const TronWeb = require("tronweb");
 const fs      = require("fs");
 const path    = require("path");
