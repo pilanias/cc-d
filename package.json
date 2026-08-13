@@ -7,7 +7,7 @@
     "test": "hardhat test",
     "deploy:local": "hardhat run scripts/deploy.js --network localhost",
     "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
-    "deploy:bsc-testnet": "hardhat run scripts/deploy.js --network bscTestnet",
+    "deploy:bsc-testnet": "hardhat run scripts/deploy.js --network bsc",
     "node": "hardhat node"
   },
   "devDependencies": {

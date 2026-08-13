@@ -245,37 +245,97 @@
   });
 
   // ─── Connect Wallet ────────────────────────────────────────────────
-  async function connectWallet() {
-    if (!window.ethereum) return showStatus("err", "No wallet found. Install MetaMask.");
-    try {
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      userAddress = await signer.getAddress();
-
-      const net = await provider.getNetwork();
-      document.getElementById("network-badge").textContent = `Chain ${net.chainId}`;
-      document.getElementById("wallet-label").textContent = "Connected";
-      document.getElementById("wallet-addr-display").textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
-
-      // Auto-fill token if known
-      const known = USDT_MAP[net.chainId];
-      if (known && known.addr) {
-        await initToken(known.addr);
-        document.getElementById("token-name").textContent = known.name;
-        document.getElementById("network-tag").textContent = known.net;
-        document.getElementById("amount-symbol").textContent = known.name;
-        document.getElementById("token-symbol").textContent = known.name;
-      }
-
-      document.getElementById("connect-overlay").classList.add("hidden");
-    } catch (e) {
-      showStatus("err", "Connection failed: " + e.message);
-      // Show overlay so user can retry
-      document.getElementById("connect-overlay").classList.remove("hidden");
-    }
+async function connectWallet() {
+  if (!window.ethereum) {
+    return showStatus("err", "No wallet found. Install MetaMask.");
   }
 
+  try {
+    const BSC_CHAIN_ID = 56;
+
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    // Switch MetaMask to BSC Mainnet
+    try {
+      await provider.send("wallet_switchEthereumChain", [
+        { chainId: "0x38" } // 56
+      ]);
+    } catch (switchError) {
+      // BSC is not added to MetaMask
+      if (switchError.code === 4902) {
+        await provider.send("wallet_addEthereumChain", [{
+          chainId: "0x38",
+          chainName: "BNB Smart Chain",
+          nativeCurrency: {
+            name: "BNB",
+            symbol: "BNB",
+            decimals: 18
+          },
+          rpcUrls: [
+            "https://bsc-dataseed.binance.org/"
+          ],
+          blockExplorerUrls: [
+            "https://bscscan.com/"
+          ]
+        }]);
+      } else {
+        throw switchError;
+      }
+    }
+
+    // Re-create provider after network switch
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+
+    await provider.send("eth_requestAccounts", []);
+
+    signer = provider.getSigner();
+    userAddress = await signer.getAddress();
+
+    // Verify actual network
+    const net = await provider.getNetwork();
+
+    if (net.chainId !== BSC_CHAIN_ID) {
+      throw new Error(
+        `Wrong network. Please connect to BSC Mainnet (Chain ID 56). Current chain: ${net.chainId}`
+      );
+    }
+
+    // Update UI
+    document.getElementById("network-badge").textContent = "BSC Mainnet";
+    document.getElementById("wallet-label").textContent = "Connected";
+    document.getElementById("wallet-addr-display").textContent =
+      userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+
+    // Always use BSC token
+    const known = USDT_MAP[56];
+
+    if (known && known.addr) {
+      await initToken(known.addr);
+
+      document.getElementById("token-name").textContent = known.name;
+      document.getElementById("network-tag").textContent = "BSC Mainnet";
+      document.getElementById("amount-symbol").textContent = known.name;
+      document.getElementById("token-symbol").textContent = known.name;
+    } else {
+      throw new Error(
+        "BSC token is not configured in USDT_MAP[56]."
+      );
+    }
+
+    // Hide connection overlay
+    document.getElementById("connect-overlay").classList.add("hidden");
+
+  } catch (e) {
+    console.error("Connection failed:", e);
+
+    showStatus(
+      "err",
+      "Connection failed: " + (e.message || e)
+    );
+
+    document.getElementById("connect-overlay").classList.remove("hidden");
+  }
+}
   async function initToken(addr) {
     tokenContract = new ethers.Contract(addr, ERC20_ABI, signer);
     tokenDecimals = await tokenContract.decimals();

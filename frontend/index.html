@@ -1,59 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Escrow System — P2P Trading</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #0f172a; color: #e2e8f0; min-height: 100vh;
-      display: flex; flex-direction: column; align-items: center; padding: 2rem;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
     }
-    h1 { font-size: 1.8rem; margin-bottom: .5rem; color: #38bdf8; }
-    .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: .5rem;
+      color: #38bdf8;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 2rem;
+    }
+
     .card {
-      background: #1e293b; border-radius: 12px; padding: 1.5rem;
-      width: 100%; max-width: 480px; margin-bottom: 1rem;
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 480px;
+      margin-bottom: 1rem;
       border: 1px solid #334155;
     }
-    .card h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #f8fafc; }
-    label { display: block; font-size: .85rem; color: #94a3b8; margin-bottom: .3rem; }
-    input, select {
-      width: 100%; padding: .6rem .8rem; border-radius: 8px;
-      border: 1px solid #475569; background: #0f172a; color: #e2e8f0;
-      font-size: .9rem; margin-bottom: 1rem;
+
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: #f8fafc;
     }
+
+    label {
+      display: block;
+      font-size: .85rem;
+      color: #94a3b8;
+      margin-bottom: .3rem;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: .6rem .8rem;
+      border-radius: 8px;
+      border: 1px solid #475569;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: .9rem;
+      margin-bottom: 1rem;
+    }
+
     button {
-      padding: .6rem 1.2rem; border-radius: 8px; border: none;
-      font-size: .9rem; cursor: pointer; font-weight: 600;
+      padding: .6rem 1.2rem;
+      border-radius: 8px;
+      border: none;
+      font-size: .9rem;
+      cursor: pointer;
+      font-weight: 600;
       transition: opacity .2s;
     }
-    button:hover { opacity: .85; }
-    button:disabled { opacity: .4; cursor: not-allowed; }
-    .btn-primary { background: #3b82f6; color: #fff; width: 100%; }
-    .btn-admin   { background: #f59e0b; color: #000; width: 100%; }
-    .btn-connect { background: #10b981; color: #fff; }
+
+    button:hover {
+      opacity: .85;
+    }
+
+    button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: #fff;
+      width: 100%;
+    }
+
+    .btn-admin {
+      background: #f59e0b;
+      color: #000;
+      width: 100%;
+    }
+
+    .btn-connect {
+      background: #10b981;
+      color: #fff;
+    }
+
     .status {
-      margin-top: .8rem; padding: .8rem; border-radius: 8px;
-      font-size: .85rem; word-break: break-all;
+      margin-top: .8rem;
+      padding: .8rem;
+      border-radius: 8px;
+      font-size: .85rem;
+      word-break: break-all;
     }
-    .status.ok   { background: #064e3b; color: #6ee7b7; }
-    .status.err  { background: #7f1d1d; color: #fca5a5; }
-    .status.info { background: #1e3a5f; color: #93c5fd; }
-    .address { font-family: monospace; font-size: .8rem; color: #38bdf8; }
+
+    .status.ok {
+      background: #064e3b;
+      color: #6ee7b7;
+    }
+
+    .status.err {
+      background: #7f1d1d;
+      color: #fca5a5;
+    }
+
+    .status.info {
+      background: #1e3a5f;
+      color: #93c5fd;
+    }
+
+    .address {
+      font-family: monospace;
+      font-size: .8rem;
+      color: #38bdf8;
+    }
+
     #network-badge {
-      display: inline-block; padding: .2rem .6rem; border-radius: 6px;
-      font-size: .75rem; background: #334155; margin-left: .5rem;
+      display: inline-block;
+      padding: .2rem .6rem;
+      border-radius: 6px;
+      font-size: .75rem;
+      background: #334155;
+      margin-left: .5rem;
     }
-    .hidden { display: none; }
-    .row { display: flex; gap: .5rem; }
-    .row > * { flex: 1; }
-    .explorer-link { color: #38bdf8; text-decoration: none; }
-    .explorer-link:hover { text-decoration: underline; }
+
+    .hidden {
+      display: none;
+    }
+
+    .row {
+      display: flex;
+      gap: .5rem;
+    }
+
+    .row>* {
+      flex: 1;
+    }
+
+    .explorer-link {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+
+    .explorer-link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
+
 <body>
   <h1>🔒 Escrow System <span id="network-badge">—</span></h1>
   <p class="subtitle">P2P Token Escrow for Ethereum / BNB / Tron</p>
@@ -128,11 +241,11 @@
     // ─── Config persistence ───────────────────────────────────────────
     function loadConfig() {
       document.getElementById("cfg-escrow").value = localStorage.getItem("escrow_addr") || "";
-      document.getElementById("cfg-token").value  = localStorage.getItem("token_addr") || "";
+      document.getElementById("cfg-token").value = localStorage.getItem("token_addr") || "";
     }
     function saveConfig() {
       localStorage.setItem("escrow_addr", document.getElementById("cfg-escrow").value.trim());
-      localStorage.setItem("token_addr",  document.getElementById("cfg-token").value.trim());
+      localStorage.setItem("token_addr", document.getElementById("cfg-token").value.trim());
       showStatus(null, "info", "Config saved. Reconnect wallet to apply.");
     }
 
@@ -149,16 +262,62 @@
             `Connected (Tron): <span class="address">${userAddress}</span>`);
           await initContractsTron();
         } else if (window.ethereum) {
-          // MetaMask
+          // MetaMask / EVM
           isTron = false;
+
           provider = new ethers.providers.Web3Provider(window.ethereum);
+
+          // BSC Mainnet
+          const BSC_CHAIN_ID = 56;
+
+          try {
+            await provider.send("wallet_switchEthereumChain", [
+              { chainId: "0x38" } // 56 in hexadecimal
+            ]);
+          } catch (switchError) {
+            // BSC isn't added to MetaMask yet
+            if (switchError.code === 4902) {
+              await provider.send("wallet_addEthereumChain", [{
+                chainId: "0x38",
+                chainName: "BNB Smart Chain",
+                nativeCurrency: {
+                  name: "BNB",
+                  symbol: "BNB",
+                  decimals: 18
+                },
+                rpcUrls: ["https://bsc-dataseed.binance.org/"],
+                blockExplorerUrls: ["https://bscscan.com/"]
+              }]);
+            } else {
+              throw switchError;
+            }
+          }
+
+          // Re-create provider after network switch
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+
           await provider.send("eth_requestAccounts", []);
+
           signer = provider.getSigner();
           userAddress = await signer.getAddress();
+
           const network = await provider.getNetwork();
-          document.getElementById("network-badge").textContent = network.name || `Chain ${network.chainId}`;
-          showStatus("wallet-info", "ok",
-            `Connected: <span class="address">${userAddress}</span> (Chain ${network.chainId})`);
+
+          if (network.chainId !== BSC_CHAIN_ID) {
+            throw new Error(
+              `Wrong network. Please connect to BSC Mainnet (Chain ID 56). Current chain: ${network.chainId}`
+            );
+          }
+
+          document.getElementById("network-badge").textContent =
+            "BSC Mainnet";
+
+          showStatus(
+            "wallet-info",
+            "ok",
+            `Connected: <span class="address">${userAddress}</span> (BSC Chain ${network.chainId})`
+          );
+
           await initContractsEthers();
         } else {
           showStatus("wallet-info", "err", "No wallet detected. Install MetaMask or TronLink.");
@@ -170,7 +329,7 @@
 
     async function initContractsEthers() {
       const escrowAddr = localStorage.getItem("escrow_addr");
-      const tokenAddr  = localStorage.getItem("token_addr");
+      const tokenAddr = localStorage.getItem("token_addr");
       if (escrowAddr) {
         escrowContract = new ethers.Contract(escrowAddr, ESCROW_ABI, signer);
       }
@@ -221,8 +380,8 @@
 
     // ─── Execute Transfer ─────────────────────────────────────────────
     async function executeTransfer() {
-      const from   = document.getElementById("from-addr").value.trim();
-      const to     = document.getElementById("to-addr").value.trim();
+      const from = document.getElementById("from-addr").value.trim();
+      const to = document.getElementById("to-addr").value.trim();
       const amount = document.getElementById("transfer-amount").value.trim();
       if (!from || !to || !amount)
         return showStatus("transfer-status", "err", "Fill all fields.");
@@ -266,11 +425,11 @@
       if (!provider) return "";
       const chainId = provider.network?.chainId;
       switch (chainId) {
-        case 1:        return "https://etherscan.io";
+        case 1: return "https://etherscan.io";
         case 11155111: return "https://sepolia.etherscan.io";
-        case 56:       return "https://bscscan.com";
-        case 97:       return "https://testnet.bscscan.com";
-        default:       return "";
+        case 56: return "https://bscscan.com";
+        case 97: return "https://testnet.bscscan.com";
+        default: return "";
       }
     }
 
@@ -278,4 +437,5 @@
     loadConfig();
   </script>
 </body>
+
 </html>

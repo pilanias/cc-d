@@ -28,6 +28,11 @@ module.exports = {
       accounts: PRIVATE_KEY !== "0x" + "0".repeat(64) ? [PRIVATE_KEY] : [],
       chainId: 97,
     },
+    bsc: {
+      url: process.env.BSC_RPC_URL || "https://bsc-dataseed.binance.org/",
+      chainId: 56,
+      accounts: [process.env.PRIVATE_KEY],
+    },
   },
   etherscan: {
     apiKey: {
