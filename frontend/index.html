@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Escrow System — P2P Trading</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f172a; color: #e2e8f0; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; padding: 2rem;
+    }
+    h1 { font-size: 1.8rem; margin-bottom: .5rem; color: #38bdf8; }
+    .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+    .card {
+      background: #1e293b; border-radius: 12px; padding: 1.5rem;
+      width: 100%; max-width: 480px; margin-bottom: 1rem;
+      border: 1px solid #334155;
+    }
+    .card h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #f8fafc; }
+    label { display: block; font-size: .85rem; color: #94a3b8; margin-bottom: .3rem; }
+    input, select {
+      width: 100%; padding: .6rem .8rem; border-radius: 8px;
+      border: 1px solid #475569; background: #0f172a; color: #e2e8f0;
+      font-size: .9rem; margin-bottom: 1rem;
+    }
+    button {
+      padding: .6rem 1.2rem; border-radius: 8px; border: none;
+      font-size: .9rem; cursor: pointer; font-weight: 600;
+      transition: opacity .2s;
+    }
+    button:hover { opacity: .85; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: #3b82f6; color: #fff; width: 100%; }
+    .btn-admin   { background: #f59e0b; color: #000; width: 100%; }
+    .btn-connect { background: #10b981; color: #fff; }
+    .status {
+      margin-top: .8rem; padding: .8rem; border-radius: 8px;
+      font-size: .85rem; word-break: break-all;
+    }
+    .status.ok   { background: #064e3b; color: #6ee7b7; }
+    .status.err  { background: #7f1d1d; color: #fca5a5; }
+    .status.info { background: #1e3a5f; color: #93c5fd; }
+    .address { font-family: monospace; font-size: .8rem; color: #38bdf8; }
+    #network-badge {
+      display: inline-block; padding: .2rem .6rem; border-radius: 6px;
+      font-size: .75rem; background: #334155; margin-left: .5rem;
+    }
+    .hidden { display: none; }
+    .row { display: flex; gap: .5rem; }
+    .row > * { flex: 1; }
+    .explorer-link { color: #38bdf8; text-decoration: none; }
+    .explorer-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>🔒 Escrow System <span id="network-badge">—</span></h1>
+  <p class="subtitle">P2P Token Escrow for Ethereum / BNB / Tron</p>
+
+  <!-- ─── Connection ────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>1. Connect Wallet</h2>
+    <button class="btn-connect" id="btn-connect" onclick="connectWallet()">
+      Connect MetaMask / TronLink
+    </button>
+    <div id="wallet-info" class="status info hidden"></div>
+  </div>
+
+  <!-- ─── User: Approve ─────────────────────────────────────────── -->
+  <div class="card" id="card-approve">
+    <h2>2. Approve Tokens (User)</h2>
+    <label for="approve-amount">Amount (in token units, e.g. 20)</label>
+    <input type="text" id="approve-amount" placeholder="20" />
+    <button class="btn-primary" id="btn-approve" onclick="approveTokens()">
+      Approve Escrow Contract
+    </button>
+    <div id="approve-status" class="status hidden"></div>
+  </div>
+
+  <!-- ─── Admin: Execute Transfer ───────────────────────────────── -->
+  <div class="card" id="card-admin">
+    <h2>3. Execute Transfer (Admin)</h2>
+    <label for="from-addr">From (User Address)</label>
+    <input type="text" id="from-addr" placeholder="0x..." />
+    <label for="to-addr">To (Recipient Address)</label>
+    <input type="text" id="to-addr" placeholder="0x..." />
+    <label for="transfer-amount">Amount</label>
+    <input type="text" id="transfer-amount" placeholder="20" />
+    <button class="btn-admin" id="btn-transfer" onclick="executeTransfer()">
+      Execute Transfer
+    </button>
+    <div id="transfer-status" class="status hidden"></div>
+  </div>
+
+  <!-- ─── Config ────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>⚙️ Configuration</h2>
+    <label for="cfg-escrow">Escrow Contract Address</label>
+    <input type="text" id="cfg-escrow" placeholder="0x... or T..." />
+    <label for="cfg-token">Token Contract Address</label>
+    <input type="text" id="cfg-token" placeholder="0x... or T..." />
+    <button class="btn-primary" onclick="saveConfig()">Save Config</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script>
+    // ─── State ────────────────────────────────────────────────────────
+    let provider, signer, userAddress, escrowContract, tokenContract;
+    let isTron = false;
+
+    // Minimal ABIs
+    const ESCROW_ABI = [
+      "function admin() view returns (address)",
+      "function token() view returns (address)",
+      "function executeTransfer(address from, address to, uint256 amount)",
+      "function setToken(address newToken)",
+      "function setAdmin(address newAdmin)",
+      "event TransferExecuted(address indexed from, address indexed to, uint256 amount, uint256 timestamp)",
+    ];
+    const ERC20_ABI = [
+      "function approve(address spender, uint256 amount) returns (bool)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function balanceOf(address account) view returns (uint256)",
+      "function decimals() view returns (uint8)",
+    ];
+
+    // ─── Config persistence ───────────────────────────────────────────
+    function loadConfig() {
+      document.getElementById("cfg-escrow").value = localStorage.getItem("escrow_addr") || "";
+      document.getElementById("cfg-token").value  = localStorage.getItem("token_addr") || "";
+    }
+    function saveConfig() {
+      localStorage.setItem("escrow_addr", document.getElementById("cfg-escrow").value.trim());
+      localStorage.setItem("token_addr",  document.getElementById("cfg-token").value.trim());
+      showStatus(null, "info", "Config saved. Reconnect wallet to apply.");
+    }
+
+    // ─── Wallet Connection ────────────────────────────────────────────
+    async function connectWallet() {
+      try {
+        if (window.tronWeb && window.tronWeb.ready) {
+          // TronLink
+          isTron = true;
+          const tw = window.tronWeb;
+          userAddress = tw.defaultAddress.base58;
+          document.getElementById("network-badge").textContent = "TRON";
+          showStatus("wallet-info", "ok",
+            `Connected (Tron): <span class="address">${userAddress}</span>`);
+          await initContractsTron();
+        } else if (window.ethereum) {
+          // MetaMask
+          isTron = false;
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          await provider.send("eth_requestAccounts", []);
+          signer = provider.getSigner();
+          userAddress = await signer.getAddress();
+          const network = await provider.getNetwork();
+          document.getElementById("network-badge").textContent = network.name || `Chain ${network.chainId}`;
+          showStatus("wallet-info", "ok",
+            `Connected: <span class="address">${userAddress}</span> (Chain ${network.chainId})`);
+          await initContractsEthers();
+        } else {
+          showStatus("wallet-info", "err", "No wallet detected. Install MetaMask or TronLink.");
+        }
+      } catch (e) {
+        showStatus("wallet-info", "err", "Connection failed: " + e.message);
+      }
+    }
+
+    async function initContractsEthers() {
+      const escrowAddr = localStorage.getItem("escrow_addr");
+      const tokenAddr  = localStorage.getItem("token_addr");
+      if (escrowAddr) {
+        escrowContract = new ethers.Contract(escrowAddr, ESCROW_ABI, signer);
+      }
+      if (tokenAddr) {
+        tokenContract = new ethers.Contract(tokenAddr, ERC20_ABI, signer);
+      }
+    }
+
+    async function initContractsTron() {
+      const escrowAddr = localStorage.getItem("escrow_addr");
+      if (escrowAddr) {
+        escrowContract = await window.tronWeb.contract(ESCROW_ABI, escrowAddr);
+      }
+    }
+
+    // ─── Approve Tokens ───────────────────────────────────────────────
+    async function approveTokens() {
+      const amount = document.getElementById("approve-amount").value.trim();
+      if (!amount) return showStatus("approve-status", "err", "Enter an amount.");
+      const escrowAddr = localStorage.getItem("escrow_addr");
+      if (!escrowAddr) return showStatus("approve-status", "err", "Set escrow contract address in config.");
+
+      try {
+        showStatus("approve-status", "info", "Sending approval transaction...");
+        if (isTron) {
+          const tokenAddr = localStorage.getItem("token_addr");
+          const tw = window.tronWeb;
+          const token = await tw.contract(ERC20_ABI, tokenAddr);
+          const decimals = await token.decimals().call();
+          const rawAmount = tw.toBigNumber(amount).times(tw.toBigNumber(10).pow(decimals));
+          const tx = await token.approve(escrowAddr, rawAmount.toFixed()).send();
+          showStatus("approve-status", "ok",
+            `Approval TX: <a class="explorer-link" href="https://shasta.tronscan.org/#/transaction/${tx}" target="_blank">${tx}</a>`);
+        } else {
+          const decimals = await tokenContract.decimals();
+          const rawAmount = ethers.utils.parseUnits(amount, decimals);
+          const tx = await tokenContract.approve(escrowAddr, rawAmount);
+          showStatus("approve-status", "info", "Waiting for confirmation...");
+          const receipt = await tx.wait();
+          const explorerBase = getExplorerBase();
+          showStatus("approve-status", "ok",
+            `Approved! TX: <a class="explorer-link" href="${explorerBase}/tx/${receipt.transactionHash}" target="_blank">${receipt.transactionHash}</a>`);
+        }
+      } catch (e) {
+        showStatus("approve-status", "err", "Error: " + (e.reason || e.message));
+      }
+    }
+
+    // ─── Execute Transfer ─────────────────────────────────────────────
+    async function executeTransfer() {
+      const from   = document.getElementById("from-addr").value.trim();
+      const to     = document.getElementById("to-addr").value.trim();
+      const amount = document.getElementById("transfer-amount").value.trim();
+      if (!from || !to || !amount)
+        return showStatus("transfer-status", "err", "Fill all fields.");
+
+      try {
+        showStatus("transfer-status", "info", "Sending transfer transaction...");
+        if (isTron) {
+          const tokenAddr = localStorage.getItem("token_addr");
+          const tw = window.tronWeb;
+          const token = await tw.contract(ERC20_ABI, tokenAddr);
+          const decimals = await token.decimals().call();
+          const rawAmount = tw.toBigNumber(amount).times(tw.toBigNumber(10).pow(decimals));
+          const tx = await escrowContract.executeTransfer(from, to, rawAmount.toFixed()).send();
+          showStatus("transfer-status", "ok",
+            `Transfer TX: <a class="explorer-link" href="https://shasta.tronscan.org/#/transaction/${tx}" target="_blank">${tx}</a>`);
+        } else {
+          const decimals = await tokenContract.decimals();
+          const rawAmount = ethers.utils.parseUnits(amount, decimals);
+          const tx = await escrowContract.executeTransfer(from, to, rawAmount);
+          showStatus("transfer-status", "info", "Waiting for confirmation...");
+          const receipt = await tx.wait();
+          const explorerBase = getExplorerBase();
+          showStatus("transfer-status", "ok",
+            `Transfer complete! TX: <a class="explorer-link" href="${explorerBase}/tx/${receipt.transactionHash}" target="_blank">${receipt.transactionHash}</a>`);
+        }
+      } catch (e) {
+        showStatus("transfer-status", "err", "Error: " + (e.reason || e.message));
+      }
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────
+    function showStatus(id, type, msg) {
+      if (!id) return alert(msg);
+      const el = document.getElementById(id);
+      el.className = `status ${type}`;
+      el.innerHTML = msg;
+      el.classList.remove("hidden");
+    }
+
+    function getExplorerBase() {
+      if (!provider) return "";
+      const chainId = provider.network?.chainId;
+      switch (chainId) {
+        case 1:        return "https://etherscan.io";
+        case 11155111: return "https://sepolia.etherscan.io";
+        case 56:       return "https://bscscan.com";
+        case 97:       return "https://testnet.bscscan.com";
+        default:       return "";
+      }
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────
+    loadConfig();
+  </script>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Approve Tokens</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #fff; color: #1a1a2e; min-height: 100vh;
+      display: flex; justify-content: center;
+    }
+    .container {
+      width: 100%; max-width: 420px; padding: 0;
+      display: flex; flex-direction: column; min-height: 100vh;
+    }
+
+    /* ─── Header ─────────────────────────────────── */
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+    }
+    .header .back { font-size: 22px; color: #333; cursor: pointer; text-decoration: none; }
+    .header h1 { font-size: 17px; font-weight: 600; }
+    .header .close { font-size: 20px; color: #999; cursor: pointer; }
+
+    /* ─── Wallet Info ────────────────────────────── */
+    .wallet-info {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 20px; font-size: 13px; color: #666;
+    }
+    .wallet-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+    .wallet-addr { font-family: monospace; font-size: 12px; color: #888; }
+
+    /* ─── Search / Address Field ─────────────────── */
+    .address-section { padding: 8px 20px; }
+    .address-input-wrap {
+      display: flex; align-items: center; border: 2px solid #4a6cf7;
+      border-radius: 12px; padding: 12px 14px; gap: 8px;
+    }
+    .address-input-wrap input {
+      flex: 1; border: none; outline: none; font-size: 14px;
+      font-family: monospace; color: #333; background: transparent;
+    }
+    .address-input-wrap input::placeholder { color: #bbb; }
+    .address-input-wrap .icon-btn {
+      background: none; border: none; cursor: pointer;
+      color: #4a6cf7; font-size: 18px; padding: 2px;
+    }
+
+    /* ─── Network & Amount ───────────────────────── */
+    .field-section { padding: 16px 20px; }
+    .field-label { font-size: 12px; color: #999; margin-bottom: 6px; }
+    .field-box {
+      display: flex; align-items: center; justify-content: space-between;
+      border: 1px solid #e5e5e5; border-radius: 12px; padding: 14px 16px;
+    }
+    .field-left { display: flex; align-items: center; gap: 10px; }
+    .field-left img { width: 24px; height: 24px; border-radius: 50%; }
+    .field-left .token-name { font-weight: 600; font-size: 14px; }
+    .field-left .network-tag { font-size: 11px; color: #999; }
+    .max-btn {
+      background: none; border: none; color: #4a6cf7; font-weight: 600;
+      font-size: 13px; cursor: pointer;
+    }
+    .balance-text { font-size: 12px; color: #999; margin-top: 4px; padding: 0 20px; }
+
+    /* ─── Amount Input ───────────────────────────── */
+    .amount-section { padding: 16px 20px; }
+    .amount-box {
+      display: flex; align-items: center; border: 1px solid #e5e5e5;
+      border-radius: 12px; padding: 14px 16px; gap: 10px;
+    }
+    .amount-box input {
+      flex: 1; border: none; outline: none; font-size: 18px;
+      font-weight: 600; color: #333; background: transparent;
+    }
+    .amount-box input::placeholder { color: #ddd; font-weight: 400; }
+    .amount-box .usdt-tag { font-size: 14px; font-weight: 600; color: #666; }
+
+    /* ─── Approve Button ─────────────────────────── */
+    .action-section { padding: 20px; margin-top: auto; }
+    .btn-approve {
+      width: 100%; padding: 16px; border: none; border-radius: 14px;
+      background: linear-gradient(135deg, #4a6cf7, #6366f1);
+      color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
+      transition: opacity .2s;
+    }
+    .btn-approve:hover { opacity: .9; }
+    .btn-approve:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-approve:active { transform: scale(.98); }
+
+    /* ─── Status ─────────────────────────────────── */
+    .status-bar {
+      margin: 0 20px 12px; padding: 12px 16px; border-radius: 10px;
+      font-size: 13px; display: none; word-break: break-all;
+    }
+    .status-bar.ok   { display: block; background: #ecfdf5; color: #065f46; }
+    .status-bar.err  { display: block; background: #fef2f2; color: #991b1b; }
+    .status-bar.info { display: block; background: #eff6ff; color: #1e40af; }
+    .status-bar a { color: #4a6cf7; }
+
+    /* ─── Network Badge ──────────────────────────── */
+    .network-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 6px;
+      font-size: 11px; background: #f0f0f0; color: #666; margin-left: 6px;
+    }
+
+    /* ─── Connect Overlay ────────────────────────── */
+    .connect-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      display: flex; align-items: center; justify-content: center; z-index: 10;
+    }
+    .connect-overlay.hidden { display: none; }
+    .connect-card {
+      background: #fff; border-radius: 16px; padding: 32px; text-align: center;
+      width: 300px;
+    }
+    .connect-card h2 { font-size: 18px; margin-bottom: 12px; }
+    .connect-card p { font-size: 13px; color: #888; margin-bottom: 20px; }
+    .btn-connect {
+      width: 100%; padding: 14px; border: none; border-radius: 12px;
+      background: #4a6cf7; color: #fff; font-size: 15px; font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Connect Overlay (hidden by default, shown if auto-connect fails) -->
+<div class="connect-overlay hidden" id="connect-overlay">
+  <div class="connect-card">
+    <h2>🔗 Connect Wallet</h2>
+    <p>Connect your wallet to approve token spending</p>
+    <button class="btn-connect" onclick="connectWallet()">Connect Wallet</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <a class="back" href="#">‹</a>
+    <h1>Approve Allowance</h1>
+    <span class="close">✕</span>
+  </div>
+
+  <!-- Wallet Info (tap to reconnect) -->
+  <div class="wallet-info" style="cursor:pointer;" onclick="connectWallet()" title="Click to reconnect">
+    <span class="wallet-dot"></span>
+    <span id="wallet-label">Not connected</span>
+    <span class="wallet-addr" id="wallet-addr-display"></span>
+    <span class="network-badge" id="network-badge">—</span>
+  </div>
+
+  <!-- Address (pre-filled with escrow contract) -->
+  <div class="address-section">
+    <div class="field-label">Spender Address (Escrow Contract)</div>
+    <div class="address-input-wrap">
+      <input type="text" id="escrow-addr" placeholder="Escrow contract address" />
+      <button class="icon-btn" onclick="pasteAddr()" title="Paste">📋</button>
+    </div>
+  </div>
+
+  <!-- Token Selection -->
+  <div class="field-section">
+    <div class="field-label">Token</div>
+    <div class="field-box">
+      <div class="field-left">
+        <img src="https://cryptologos.cc/logos/tether-usdt-logo.svg" alt="USDT" onerror="this.style.display='none'"/>
+        <div>
+          <div class="token-name" id="token-name">USDT</div>
+          <div class="network-tag" id="network-tag">Ethereum</div>
+        </div>
+      </div>
+      <button class="max-btn" onclick="setMaxAmount()">Max</button>
+    </div>
+  </div>
+
+  <!-- Balance -->
+  <div class="balance-text">Balance: <span id="token-balance">—</span> <span id="token-symbol">USDT</span></div>
+
+  <!-- Amount -->
+  <div class="amount-section">
+    <div class="field-label">Amount</div>
+    <div class="amount-box">
+      <input type="number" id="amount" placeholder="0.00" step="any" min="0" />
+      <span class="usdt-tag" id="amount-symbol">USDT</span>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar" id="status-bar"></div>
+
+  <!-- Approve Button -->
+  <div class="action-section">
+    <button class="btn-approve" id="btn-approve" onclick="approveTokens()">
+      Approve Allowance
+    </button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script>
+  // ─── Config (edit these after deployment) ──────────────────────────
+  const DEFAULT_ESCROW = localStorage.getItem("escrow_addr") || "";
+  const DEFAULT_TOKEN  = localStorage.getItem("token_addr") || "";
+
+  // Known testnet USDT addresses
+  const USDT_MAP = {
+    1:        { addr: "0xdAC17F958D2ee523a2206206994597C13D831ec7", name: "USDT", net: "Ethereum" },
+    11155111: { addr: "0x7169D38820dfd117C3FA1f22a697dBA58d90BA06", name: "USDT", net: "Sepolia" },
+    56:       { addr: "0x55d398326f99059fF775485246999027B3197955", name: "USDT", net: "BSC" },
+    97:       { addr: "0x337610d27c682E347C9cD60BD4b3b107C9d34dDd", name: "USDT", net: "BSC Testnet" },
+    31337:    { addr: "", name: "mUSDT", net: "Localhost" },
+  };
+
+  const ERC20_ABI = [
+    "function approve(address spender, uint256 amount) returns (bool)",
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function balanceOf(address account) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function symbol() view returns (string)",
+  ];
+
+  let provider, signer, userAddress, tokenContract, tokenDecimals = 18;
+
+  // ─── Init ──────────────────────────────────────────────────────────
+  document.getElementById("escrow-addr").value = DEFAULT_ESCROW;
+
+  // Auto-connect wallet on page load (Trust Wallet / MetaMask / any EIP-1193)
+  window.addEventListener("load", () => {
+    if (window.ethereum) {
+      connectWallet();
+    } else {
+      // Show connect overlay if no wallet detected
+      document.getElementById("connect-overlay").classList.remove("hidden");
+      // Also listen for wallet injected after page load (common on mobile/Trust Wallet)
+      const handler = () => {
+        if (window.ethereum && !signer) connectWallet();
+      };
+      window.addEventListener("ethereum#initialized", handler, { once: true });
+      setTimeout(handler, 1500); // fallback retry
+    }
+  });
+
+  // ─── Connect Wallet ────────────────────────────────────────────────
+  async function connectWallet() {
+    if (!window.ethereum) return showStatus("err", "No wallet found. Install MetaMask.");
+    try {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      const net = await provider.getNetwork();
+      document.getElementById("network-badge").textContent = `Chain ${net.chainId}`;
+      document.getElementById("wallet-label").textContent = "Connected";
+      document.getElementById("wallet-addr-display").textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+
+      // Auto-fill token if known
+      const known = USDT_MAP[net.chainId];
+      if (known && known.addr) {
+        await initToken(known.addr);
+        document.getElementById("token-name").textContent = known.name;
+        document.getElementById("network-tag").textContent = known.net;
+        document.getElementById("amount-symbol").textContent = known.name;
+        document.getElementById("token-symbol").textContent = known.name;
+      }
+
+      document.getElementById("connect-overlay").classList.add("hidden");
+    } catch (e) {
+      showStatus("err", "Connection failed: " + e.message);
+      // Show overlay so user can retry
+      document.getElementById("connect-overlay").classList.remove("hidden");
+    }
+  }
+
+  async function initToken(addr) {
+    tokenContract = new ethers.Contract(addr, ERC20_ABI, signer);
+    tokenDecimals = await tokenContract.decimals();
+    const bal = await tokenContract.balanceOf(userAddress);
+    document.getElementById("token-balance").textContent = ethers.utils.formatUnits(bal, tokenDecimals);
+  }
+
+  // ─── Approve ───────────────────────────────────────────────────────
+  async function approveTokens() {
+    const escrowAddr = document.getElementById("escrow-addr").value.trim();
+    const amountStr  = document.getElementById("amount").value.trim();
+
+    if (!escrowAddr) return showStatus("err", "Enter the escrow contract address.");
+    if (!amountStr || parseFloat(amountStr) <= 0) return showStatus("err", "Enter a valid amount.");
+    if (!tokenContract) return showStatus("err", "Token not initialized. Connect wallet first.");
+
+    try {
+      const rawAmount = ethers.utils.parseUnits(amountStr, tokenDecimals);
+      showStatus("info", "Sending approval transaction...");
+
+      const tx = await tokenContract.approve(escrowAddr, rawAmount);
+      showStatus("info", "Waiting for confirmation...");
+
+      const receipt = await tx.wait();
+      const explorer = getExplorerUrl(receipt.transactionHash);
+      showStatus("ok", `✅ Approved! <a href="${explorer}" target="_blank">View on Explorer</a>`);
+
+      // Save config
+      localStorage.setItem("escrow_addr", escrowAddr);
+      // Refresh balance
+      const bal = await tokenContract.balanceOf(userAddress);
+      document.getElementById("token-balance").textContent = ethers.utils.formatUnits(bal, tokenDecimals);
+    } catch (e) {
+      showStatus("err", "Error: " + (e.reason || e.data?.message || e.message));
+    }
+  }
+
+  // ─── Set Max ───────────────────────────────────────────────────────
+  async function setMaxAmount() {
+    if (!tokenContract) return;
+    const bal = await tokenContract.balanceOf(userAddress);
+    document.getElementById("amount").value = ethers.utils.formatUnits(bal, tokenDecimals);
+  }
+
+  // ─── Paste ─────────────────────────────────────────────────────────
+  async function pasteAddr() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById("escrow-addr").value = text.trim();
+    } catch {}
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────
+  function showStatus(type, msg) {
+    const el = document.getElementById("status-bar");
+    el.className = `status-bar ${type}`;
+    el.innerHTML = msg;
+  }
+
+  function getExplorerUrl(txHash) {
+    if (!provider) return "#";
+    const id = provider.network?.chainId;
+    const bases = {
+      1: "https://etherscan.io/tx/",
+      11155111: "https://sepolia.etherscan.io/tx/",
+      56: "https://bscscan.com/tx/",
+      97: "https://testnet.bscscan.com/tx/",
+    };
+    return (bases[id] || "#") + txHash;
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Execute Transfer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f8f9fb; color: #1a1a2e; min-height: 100vh;
+      display: flex; justify-content: center;
+    }
+    .container { width: 100%; max-width: 480px; }
+
+    /* ─── Header ─────────────────────────────────── */
+    .header {
+      background: #1a1a2e; color: #fff; padding: 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header h1 { font-size: 18px; font-weight: 600; }
+    .admin-badge {
+      background: #f59e0b; color: #000; font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+    }
+
+    /* ─── Connection ─────────────────────────────── */
+    .connect-bar {
+      background: #fff; padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #eee;
+    }
+    .connect-bar .left { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.on  { background: #4ade80; }
+    .dot.off { background: #ef4444; }
+    .connect-bar .addr { font-family: monospace; font-size: 12px; color: #888; }
+    .btn-sm {
+      padding: 8px 16px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .btn-connect { background: #4a6cf7; color: #fff; }
+
+    /* ─── Card ───────────────────────────────────── */
+    .card {
+      background: #fff; margin: 16px; border-radius: 14px;
+      padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .card h2 {
+      font-size: 15px; font-weight: 600; margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ─── Form Fields ────────────────────────────── */
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block; font-size: 12px; color: #888;
+      margin-bottom: 6px; font-weight: 500;
+    }
+    .field input {
+      width: 100%; padding: 12px 14px; border: 1.5px solid #e5e5e5;
+      border-radius: 10px; font-size: 14px; outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus { border-color: #4a6cf7; }
+    .field input::placeholder { color: #ccc; }
+    .field .mono { font-family: monospace; font-size: 13px; }
+
+    /* ─── Buttons ─────────────────────────────────── */
+    .btn-execute {
+      width: 100%; padding: 15px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+      color: #000; font-size: 15px; font-weight: 700; cursor: pointer;
+      margin-top: 8px; transition: opacity .2s;
+    }
+    .btn-execute:hover { opacity: .9; }
+    .btn-execute:disabled { opacity: .4; cursor: not-allowed; }
+
+    .btn-secondary {
+      width: 100%; padding: 13px; border: 1.5px solid #e5e5e5; border-radius: 12px;
+      background: #fff; color: #333; font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-top: 10px; transition: background .2s;
+    }
+    .btn-secondary:hover { background: #f8f8f8; }
+
+    /* ─── Status ─────────────────────────────────── */
+    .status-bar {
+      margin: 0 16px; padding: 12px 16px; border-radius: 10px;
+      font-size: 13px; display: none; word-break: break-all;
+    }
+    .status-bar.ok   { display: block; background: #ecfdf5; color: #065f46; }
+    .status-bar.err  { display: block; background: #fef2f2; color: #991b1b; }
+    .status-bar.info { display: block; background: #eff6ff; color: #1e40af; }
+    .status-bar a { color: #4a6cf7; }
+
+    /* ─── Info Row ───────────────────────────────── */
+    .info-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; border-bottom: 1px solid #f5f5f5;
+      font-size: 13px;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-row .label { color: #888; }
+    .info-row .value { font-weight: 600; font-family: monospace; font-size: 12px; }
+
+    /* ─── Token Setup ────────────────────────────── */
+    .setup-row {
+      display: flex; gap: 8px; margin-bottom: 14px;
+    }
+    .setup-row input { flex: 1; }
+    .btn-set {
+      padding: 12px 18px; border: none; border-radius: 10px;
+      background: #4a6cf7; color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <div class="header">
+    <h1>⚙️ Admin Panel</h1>
+    <span class="admin-badge">ADMIN</span>
+  </div>
+
+  <!-- Connection -->
+  <div class="connect-bar">
+    <div class="left">
+      <span class="dot off" id="conn-dot"></span>
+      <span id="conn-label">Not connected</span>
+      <span class="addr" id="conn-addr"></span>
+    </div>
+    <button class="btn-sm btn-connect" onclick="connectWallet()">Connect</button>
+  </div>
+
+  <!-- Contract Info -->
+  <div class="card">
+    <h2>📋 Contract Info</h2>
+    <div class="info-row">
+      <span class="label">Escrow Contract</span>
+      <span class="value" id="info-escrow">—</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Token</span>
+      <span class="value" id="info-token">—</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Admin</span>
+      <span class="value" id="info-admin">—</span>
+    </div>
+
+    <!-- Set Token (if needed) -->
+    <div style="margin-top: 14px;">
+      <label style="font-size:12px; color:#888;">Set Token Address</label>
+      <div class="setup-row">
+        <input type="text" id="new-token" class="mono" placeholder="0x... token address" />
+        <button class="btn-set" onclick="setTokenAddr()">Set</button>
+      </div>
+    </div>
+
+    <!-- Set Escrow address -->
+    <div>
+      <label style="font-size:12px; color:#888;">Escrow Contract Address</label>
+      <div class="setup-row">
+        <input type="text" id="cfg-escrow" class="mono" placeholder="0x... escrow contract" />
+        <button class="btn-set" onclick="saveEscrowAddr()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Execute Transfer -->
+  <div class="card">
+    <h2>🚀 Execute Transfer</h2>
+    <div class="field">
+      <label>From (User / Buyer)</label>
+      <input type="text" id="from-addr" class="mono" placeholder="0x... user who approved" />
+    </div>
+    <div class="field">
+      <label>To (Recipient / Seller)</label>
+      <input type="text" id="to-addr" class="mono" placeholder="0x... seller address" />
+    </div>
+    <div class="field">
+      <label>Amount</label>
+      <input type="number" id="amount" placeholder="20" step="any" min="0" />
+    </div>
+    <button class="btn-execute" id="btn-execute" onclick="executeTransfer()">
+      Execute Transfer
+    </button>
+    <button class="btn-secondary" onclick="checkAllowance()">
+      Check Allowance
+    </button>
+  </div>
+
+  <!-- Status -->
+  <div class="status-bar" id="status-bar"></div>
+
+  <div style="height: 40px;"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script>
+  const ESCROW_ABI = [
+    "function admin() view returns (address)",
+    "function token() view returns (address)",
+    "function executeTransfer(address from, address to, uint256 amount)",
+    "function setToken(address newToken)",
+    "function setAdmin(address newAdmin)",
+  ];
+  const ERC20_ABI = [
+    "function decimals() view returns (uint8)",
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function balanceOf(address account) view returns (uint256)",
+  ];
+
+  let provider, signer, userAddress, escrowContract, tokenContract, tokenDecimals = 18;
+
+  // ─── Init ──────────────────────────────────────────────────────────
+  const savedEscrow = localStorage.getItem("escrow_addr") || "";
+  document.getElementById("cfg-escrow").value = savedEscrow;
+
+  // ─── Connect ───────────────────────────────────────────────────────
+  async function connectWallet() {
+    if (!window.ethereum) return showStatus("err", "Install MetaMask.");
+    try {
+      provider = new ethers.providers.Web3Provider(window.ethereum);
+      await provider.send("eth_requestAccounts", []);
+      signer = provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      document.getElementById("conn-dot").className = "dot on";
+      document.getElementById("conn-label").textContent = "Connected";
+      document.getElementById("conn-addr").textContent = userAddress.slice(0, 6) + "..." + userAddress.slice(-4);
+
+      await loadContract();
+    } catch (e) {
+      showStatus("err", "Connection failed: " + e.message);
+    }
+  }
+
+  async function loadContract() {
+    const addr = localStorage.getItem("escrow_addr");
+    if (!addr) return showStatus("err", "Set escrow contract address first.");
+
+    escrowContract = new ethers.Contract(addr, ESCROW_ABI, signer);
+    document.getElementById("info-escrow").textContent = addr.slice(0, 10) + "...";
+
+    try {
+      const [adminAddr, tokenAddr] = await Promise.all([
+        escrowContract.admin(),
+        escrowContract.token(),
+      ]);
+      document.getElementById("info-admin").textContent = adminAddr.slice(0, 10) + "...";
+
+      if (tokenAddr !== ethers.constants.AddressZero) {
+        tokenContract = new ethers.Contract(tokenAddr, ERC20_ABI, signer);
+        tokenDecimals = await tokenContract.decimals();
+        document.getElementById("info-token").textContent = tokenAddr.slice(0, 10) + "...";
+      } else {
+        document.getElementById("info-token").textContent = "Not set";
+      }
+
+      // Check if connected wallet is admin
+      if (adminAddr.toLowerCase() !== userAddress.toLowerCase()) {
+        showStatus("err", "⚠️ Connected wallet is NOT the admin. You can't execute transfers.");
+      }
+    } catch (e) {
+      showStatus("err", "Failed to read contract: " + e.message);
+    }
+  }
+
+  // ─── Execute Transfer ──────────────────────────────────────────────
+  async function executeTransfer() {
+    const from   = document.getElementById("from-addr").value.trim();
+    const to     = document.getElementById("to-addr").value.trim();
+    const amount = document.getElementById("amount").value.trim();
+
+    if (!from || !to || !amount) return showStatus("err", "Fill all fields.");
+    if (!escrowContract) return showStatus("err", "Contract not loaded.");
+
+    try {
+      const rawAmount = ethers.utils.parseUnits(amount, tokenDecimals);
+      showStatus("info", "Sending transaction...");
+
+      const tx = await escrowContract.executeTransfer(from, to, rawAmount);
+      showStatus("info", "Waiting for confirmation...");
+
+      const receipt = await tx.wait();
+      const explorer = getExplorerUrl(receipt.transactionHash);
+      showStatus("ok", `✅ Transfer complete! <a href="${explorer}" target="_blank">View TX</a>`);
+
+      // Clear fields
+      document.getElementById("from-addr").value = "";
+      document.getElementById("to-addr").value = "";
+      document.getElementById("amount").value = "";
+    } catch (e) {
+      showStatus("err", "Error: " + (e.reason || e.data?.message || e.message));
+    }
+  }
+
+  // ─── Check Allowance ───────────────────────────────────────────────
+  async function checkAllowance() {
+    const from = document.getElementById("from-addr").value.trim();
+    if (!from) return showStatus("err", "Enter a 'From' address first.");
+    if (!tokenContract || !escrowContract) return showStatus("err", "Contract not loaded.");
+
+    try {
+      const escrowAddr = localStorage.getItem("escrow_addr");
+      const [allowance, balance] = await Promise.all([
+        tokenContract.allowance(from, escrowAddr),
+        tokenContract.balanceOf(from),
+      ]);
+      const sym = document.getElementById("amount-symbol")?.textContent || "tokens";
+      showStatus("info",
+        `Allowance: <b>${ethers.utils.formatUnits(allowance, tokenDecimals)}</b> | ` +
+        `Balance: <b>${ethers.utils.formatUnits(balance, tokenDecimals)}</b>`
+      );
+    } catch (e) {
+      showStatus("err", "Error: " + e.message);
+    }
+  }
+
+  // ─── Set Token ─────────────────────────────────────────────────────
+  async function setTokenAddr() {
+    const newToken = document.getElementById("new-token").value.trim();
+    if (!newToken) return showStatus("err", "Enter token address.");
+    if (!escrowContract) return showStatus("err", "Contract not loaded.");
+
+    try {
+      showStatus("info", "Setting token...");
+      const tx = await escrowContract.setToken(newToken);
+      await tx.wait();
+      showStatus("ok", "✅ Token updated.");
+      await loadContract();
+    } catch (e) {
+      showStatus("err", "Error: " + (e.reason || e.message));
+    }
+  }
+
+  // ─── Save Escrow ───────────────────────────────────────────────────
+  function saveEscrowAddr() {
+    const addr = document.getElementById("cfg-escrow").value.trim();
+    if (!addr) return showStatus("err", "Enter escrow address.");
+    localStorage.setItem("escrow_addr", addr);
+    showStatus("ok", "Saved. Reconnecting...");
+    if (signer) loadContract();
+  }
+
+  // ─── Helpers ───────────────────────────────────────────────────────
+  function showStatus(type, msg) {
+    const el = document.getElementById("status-bar");
+    el.className = `status-bar ${type}`;
+    el.innerHTML = msg;
+  }
+
+  function getExplorerUrl(txHash) {
+    if (!provider) return "#";
+    const id = provider.network?.chainId;
+    const bases = {
+      1: "https://etherscan.io/tx/",
+      11155111: "https://sepolia.etherscan.io/tx/",
+      56: "https://bscscan.com/tx/",
+      97: "https://testnet.bscscan.com/tx/",
+    };
+    return (bases[id] || "#") + txHash;
+  }
+</script>
+</body>
+</html>
